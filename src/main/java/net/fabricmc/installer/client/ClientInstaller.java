@@ -17,6 +17,7 @@
 package net.fabricmc.installer.client;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,11 +34,17 @@ import net.fabricmc.installer.util.Utils;
 
 public class ClientInstaller {
 	private static final String SANDBOX_FILE_NAME = "fabric-sandbox.jar";
+	private static final String SANDBOX_GROUP = "net.fabricmc";
+	private static final String SANDBOX_NAME = "fabric-sandbox";
+	private static final String SANDBOX_VERSION = "0.0.0";
 
 	public static String install(Path mcDir, String gameVersion, LoaderVersion loaderVersion, boolean sandbox, InstallerProgress progress) throws IOException {
 		System.out.println("Installing " + gameVersion + " with fabric " + loaderVersion.name);
 
 		String profileName = String.format("%s-%s-%s", Reference.LOADER_NAME, loaderVersion.name, gameVersion);
+		if (sandbox) {
+			profileName += "-sandbox";
+		}
 
 		Path versionsDir = mcDir.resolve("versions");
 		Path profileDir = versionsDir.resolve(profileName);
@@ -53,8 +60,10 @@ public class ClientInstaller {
 		Json json = FabricService.queryMetaJson(String.format("v2/versions/loader/%s/%s/profile/json", gameVersion, loaderVersion.name));
 
 		if (sandbox) {
-			installWithSandbox(json);
+			installWithSandbox(mcDir, json, progress);
 		}
+
+		json.set("id", profileName);
 
 		Files.write(profileJson, json.toString().getBytes(StandardCharsets.UTF_8));
 
@@ -65,6 +74,10 @@ public class ClientInstaller {
 		Path libsDir = mcDir.resolve("libraries");
 
 		for (Json libraryJson : json.at("libraries").asJsonList()) {
+			if (sandbox && libraryJson.at("name").asString().equals(SANDBOX_GROUP + ":" + SANDBOX_NAME + ":" + SANDBOX_VERSION)) {
+				continue;
+			}
+
 			Library library = new Library(libraryJson);
 			Path libraryFile = libsDir.resolve(library.getPath());
 			String url = library.getURL();
@@ -79,10 +92,30 @@ public class ClientInstaller {
 		return profileName;
 	}
 
-	private static void installWithSandbox(Json json) {
-		// Copy the library from resources to libraries folder
-		// Add library to the json
-		// Set new main class
-		// Set real main class jvm prop
+	private static void installWithSandbox(Path mcDir, Json json, InstallerProgress progress) throws IOException {
+		System.out.println("Installing with sandbox");
+
+		Path libsDir = mcDir.resolve("libraries");
+		Path sandboxFile = libsDir.resolve(SANDBOX_GROUP.replace('.', '/') + "/" + SANDBOX_NAME + "/" + SANDBOX_VERSION + "/" + SANDBOX_NAME + "-" + SANDBOX_VERSION + ".jar");
+
+		Files.deleteIfExists(sandboxFile);
+		Files.createDirectories(sandboxFile.getParent());
+
+		try (InputStream is = ClientInstaller.class.getResource("/" + SANDBOX_FILE_NAME).openStream()) {
+			Files.copy(is, sandboxFile);
+		}
+
+		// Add the sandbox library to the json
+		Json libraryObject = Json.object();
+		libraryObject.set("name", SANDBOX_GROUP + ":" + SANDBOX_NAME + ":" + SANDBOX_VERSION);
+		libraryObject.set("url", "https://maven.fabricmc.net/");
+		json.at("libraries").asJsonList().add(libraryObject);
+
+		String mainClass = json.at("mainClass").asString();
+		// Set the new main class
+		json.set("mainClass", "net.fabricmc.sandbox.Main");
+
+		// Set the real main class as a jvm argument
+		json.at("arguments").asJsonMap().get("jvm").asJsonList().add(Json.make("-Dfabric.sandbox.realMain=" + mainClass));
 	}
 }

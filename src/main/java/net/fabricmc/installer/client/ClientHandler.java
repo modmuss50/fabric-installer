@@ -106,7 +106,7 @@ public class ClientHandler extends Handler {
 					}
 				}
 
-				String profileName = ClientInstaller.install(mcPath, gameVersion, loaderVersion, snapshotCheckBox.isSelected(), this);
+				String profileName = ClientInstaller.install(mcPath, gameVersion, loaderVersion, useSandbox.isSelected(), this);
 
 				if (createProfile.isSelected()) {
 					if (launcherType == null) {
