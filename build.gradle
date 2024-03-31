@@ -10,7 +10,7 @@ plugins {
 
 sourceCompatibility = 1.8
 version = '1.0.0'
-archivesBaseName = "fabric-installer"
+archivesBaseName = "fabric-sandbox-installer"
 
 def ENV = System.getenv()
 version = version + (ENV.GITHUB_ACTIONS ? "" : "+local")

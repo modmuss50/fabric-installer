@@ -32,7 +32,9 @@ import net.fabricmc.installer.util.Reference;
 import net.fabricmc.installer.util.Utils;
 
 public class ClientInstaller {
-	public static String install(Path mcDir, String gameVersion, LoaderVersion loaderVersion, InstallerProgress progress) throws IOException {
+	private static final String SANDBOX_FILE_NAME = "fabric-sandbox.jar";
+
+	public static String install(Path mcDir, String gameVersion, LoaderVersion loaderVersion, boolean sandbox, InstallerProgress progress) throws IOException {
 		System.out.println("Installing " + gameVersion + " with fabric " + loaderVersion.name);
 
 		String profileName = String.format("%s-%s-%s", Reference.LOADER_NAME, loaderVersion.name, gameVersion);
@@ -49,6 +51,11 @@ public class ClientInstaller {
 		Files.deleteIfExists(profileJar);
 
 		Json json = FabricService.queryMetaJson(String.format("v2/versions/loader/%s/%s/profile/json", gameVersion, loaderVersion.name));
+
+		if (sandbox) {
+			installWithSandbox(json);
+		}
+
 		Files.write(profileJson, json.toString().getBytes(StandardCharsets.UTF_8));
 
 		/*
@@ -70,5 +77,12 @@ public class ClientInstaller {
 		progress.updateProgress(Utils.BUNDLE.getString("progress.done"));
 
 		return profileName;
+	}
+
+	private static void installWithSandbox(Json json) {
+		// Copy the library from resources to libraries folder
+		// Add library to the json
+		// Set new main class
+		// Set real main class jvm prop
 	}
 }

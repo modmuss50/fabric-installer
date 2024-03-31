@@ -17,6 +17,7 @@
 package net.fabricmc.installer.client;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.Image;
@@ -26,6 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -44,10 +46,12 @@ import net.fabricmc.installer.launcher.MojangLauncherHelperWrapper;
 import net.fabricmc.installer.util.ArgumentParser;
 import net.fabricmc.installer.util.InstallerProgress;
 import net.fabricmc.installer.util.NoopCaret;
+import net.fabricmc.installer.util.OperatingSystem;
 import net.fabricmc.installer.util.Reference;
 import net.fabricmc.installer.util.Utils;
 
 public class ClientHandler extends Handler {
+	private JCheckBox useSandbox;
 	private JCheckBox createProfile;
 
 	@Override
@@ -102,7 +106,7 @@ public class ClientHandler extends Handler {
 					}
 				}
 
-				String profileName = ClientInstaller.install(mcPath, gameVersion, loaderVersion, this);
+				String profileName = ClientInstaller.install(mcPath, gameVersion, loaderVersion, snapshotCheckBox.isSelected(), this);
 
 				if (createProfile.isSelected()) {
 					if (launcherType == null) {
@@ -194,7 +198,7 @@ public class ClientHandler extends Handler {
 		String gameVersion = getGameVersion(args);
 		LoaderVersion loaderVersion = new LoaderVersion(getLoaderVersion(args));
 
-		String profileName = ClientInstaller.install(path, gameVersion, loaderVersion, InstallerProgress.CONSOLE);
+		String profileName = ClientInstaller.install(path, gameVersion, loaderVersion, false, InstallerProgress.CONSOLE);
 
 		if (args.has("noprofile")) {
 			return;
@@ -229,8 +233,17 @@ public class ClientHandler extends Handler {
 
 	@Override
 	public void setupPane2(JPanel pane, GridBagConstraints c, InstallerGui installerGui) {
-		addRow(pane, c, null,
-				createProfile = new JCheckBox(Utils.BUNDLE.getString("option.create.profile"), true));
+		useSandbox = new JCheckBox(Utils.BUNDLE.getString("option.create.sandbox"), false);
+		createProfile = new JCheckBox(Utils.BUNDLE.getString("option.create.profile"), true);
+
+		List<Component> components = new ArrayList<>();
+
+		if (OperatingSystem.CURRENT == OperatingSystem.WINDOWS) {
+			components.add(useSandbox);
+		}
+
+		components.add(createProfile);
+		addRow(pane, c, null, components.toArray(new Component[]{}));
 
 		installLocation.setText(Utils.findDefaultInstallDir().toString());
 	}
