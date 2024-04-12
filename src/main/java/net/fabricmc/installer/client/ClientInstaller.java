@@ -16,12 +16,15 @@
 
 package net.fabricmc.installer.client;
 
+import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.MessageFormat;
+
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import mjson.Json;
 
@@ -42,6 +45,7 @@ public class ClientInstaller {
 		System.out.println("Installing " + gameVersion + " with fabric " + loaderVersion.name);
 
 		String profileName = String.format("%s-%s-%s", Reference.LOADER_NAME, loaderVersion.name, gameVersion);
+
 		if (sandbox) {
 			profileName += "-sandbox";
 		}
@@ -93,6 +97,12 @@ public class ClientInstaller {
 	}
 
 	private static void installWithSandbox(Path mcDir, Json json, InstallerProgress progress) throws IOException {
+		final File sandboxJar = chooseSandboxJar();
+
+		if (sandboxJar == null) {
+			throw new RuntimeException("No sandbox jar selected");
+		}
+
 		System.out.println("Installing with sandbox");
 
 		Path libsDir = mcDir.resolve("libraries");
@@ -101,9 +111,7 @@ public class ClientInstaller {
 		Files.deleteIfExists(sandboxFile);
 		Files.createDirectories(sandboxFile.getParent());
 
-		try (InputStream is = ClientInstaller.class.getResource("/" + SANDBOX_FILE_NAME).openStream()) {
-			Files.copy(is, sandboxFile);
-		}
+		Files.copy(sandboxJar.toPath(), sandboxFile);
 
 		// Add the sandbox library to the json
 		Json libraryObject = Json.object();
@@ -117,5 +125,19 @@ public class ClientInstaller {
 
 		// Set the real main class as a jvm argument
 		json.at("arguments").asJsonMap().get("jvm").asJsonList().add(Json.make("-Dfabric.sandbox.realMain=" + mainClass));
+	}
+
+	// Open a file dialog to choose the sandbox jar
+	private static File chooseSandboxJar() {
+		JFileChooser fileChooser = new JFileChooser();
+		fileChooser.setFileFilter(new FileNameExtensionFilter("Jar Files", "jar"));
+
+		int retVal = fileChooser.showSaveDialog(null);
+
+		if (retVal == JFileChooser.APPROVE_OPTION) {
+			return fileChooser.getSelectedFile();
+		}
+
+		return null;
 	}
 }
