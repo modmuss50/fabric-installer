@@ -38,7 +38,7 @@ dependencies {
 }
 
 base {
-	archivesName = "fabric-installer"
+	archivesName = "fabric-sandbox-installer"
 }
 
 java {
